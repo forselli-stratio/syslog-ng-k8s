@@ -1,0 +1,54 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: syslog-agent
+spec:
+  selector:
+    matchLabels:
+      app: syslog-agent
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: syslog-agent
+    spec:
+      nodeSelector:
+        kubernetes.io/hostname: kube-node-1
+      containers:
+      - image: syslog-ng:test
+        name: syslog-agent
+        ports:
+        - containerPort: 9577
+        command: ["/bin/sh","-c"]
+        args: ['/bin/syslog_ng_exporter --telemetry.address=":9577" --log.format="logger:stderr?appname=syslog-agent" --socket.path="/var/lib/syslog-ng/syslog-ng.ctl" & /usr/sbin/syslog-ng -F']
+        volumeMounts:
+        - mountPath: /var/log
+          name: varlog
+        - mountPath: /etc/syslog-ng
+          name: syslog-ng-config
+        - mountPath: /var/result
+          name: logs-dest
+        - name: varlibdockercontainers
+          mountPath: /var/lib/docker/containers
+          readOnly: true
+      volumes:
+      - hostPath:
+          path: /var/lib/docker/containers
+          type: ""
+        name: varlibdockercontainers
+      - name: varlog
+        hostPath:
+          path: /var/log
+      - name: logs-dest
+        persistentVolumeClaim:
+          claimName: syslog-agent-log-dest
+      - configMap:
+          defaultMode: 420
+          name: syslog-agent-config
+        name: syslog-ng-config
+      nodeSelector:
+        kubernetes.io/hostname: kube-node-1
+      securityContext:
+        fsGroup: 0
+        runAsGroup: 0
+        runAsUser: 0

@@ -1,0 +1,18 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: core-prometheus-kube-prome-syslog-relay
+  labels:
+    app: core-prometheus-kube-prome-syslog-relay
+  namespace: eos-metrics
+spec:
+  jobLabel: jobLabel
+  selector:
+    matchLabels:
+      app: metrics
+      app.kubernetes.io/instance: syslog-relay
+  namespaceSelector:
+    matchNames:
+    - default
+  endpoints:
+  - port: metrics

@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: syslog-agent
+  labels:
+    app: metrics
+    app.kubernetes.io/instance: syslog-agent
+spec:
+  ports:
+  - name: metrics
+    port: 9577
+    protocol: TCP
+    targetPort: 9577
+  selector:
+    app: syslog-agent
