@@ -1,19 +1,16 @@
 apiVersion: apps/v1
-kind: Deployment
+kind: DaemonSet
 metadata:
   name: syslog-agent
 spec:
   selector:
     matchLabels:
       app: syslog-agent
-  replicas: 1
   template:
     metadata:
       labels:
         app: syslog-agent
     spec:
-      nodeSelector:
-        kubernetes.io/hostname: kube-node-1
       containers:
       - image: syslog-ng:test
         name: syslog-agent
@@ -46,8 +43,6 @@ spec:
           defaultMode: 420
           name: syslog-agent-config
         name: syslog-ng-config
-      nodeSelector:
-        kubernetes.io/hostname: kube-node-1
       securityContext:
         fsGroup: 0
         runAsGroup: 0
