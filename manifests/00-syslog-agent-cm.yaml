@@ -1,0 +1,125 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: syslog-agent-config
+  namespace: default
+data:
+  syslog-ng.conf: |
+    @version: 3.20
+    
+    options {
+        chain_hostnames(off);
+        use-dns(no);
+        use-fqdn(no);
+        perm(0640);
+        stats_freq(0);
+        bad-hostname("^gconfd$");
+        flush-lines(100);
+        log-fifo-size(150000);
+    };
+    
+    ########################
+    # Filters
+    ########################
+    # Here's come the filter options. With this rules, we can set which
+    # message go where.
+    
+    filter f_dbg { level(debug); };
+    filter f_info { level(info); };
+    filter f_notice { level(notice); };
+    filter f_warn { level(warn); };
+    filter f_err { level(err); };
+    filter f_crit { level(crit .. emerg); };
+    
+    filter f_debug { level(debug) and not facility(auth, authpriv, news, mail); };
+    filter f_error { level(err .. emerg) ; };
+    filter f_messages { level(info,notice,warn) and
+                        not facility(auth,authpriv,cron,daemon,mail,news); };
+    
+    filter f_auth { facility(auth, authpriv) and not filter(f_debug); };
+    filter f_cron { facility(cron) and not filter(f_debug); };
+    filter f_daemon { facility(daemon) and not filter(f_debug); };
+    filter f_kern { facility(kern) and not filter(f_debug); };
+    filter f_lpr { facility(lpr) and not filter(f_debug); };
+    filter f_local { facility(local0, local1, local3, local4, local5,
+                            local6, local7) and not filter(f_debug); };
+    filter f_mail { facility(mail) and not filter(f_debug); };
+    filter f_news { facility(news) and not filter(f_debug); };
+    filter f_syslog3 { not facility(auth, authpriv, mail) and not filter(f_debug); };
+    filter f_user { facility(user) and not filter(f_debug); };
+    
+    ###
+    # Sources
+    ###
+    source s_dir { wildcard-file(
+        base-dir("/var/log/containers")
+        filename-pattern("*logger*.log")
+        max-files(1500)
+        follow-freq(0.5)
+        monitor-method(poll)
+        log-fetch-limit(100)
+        log-iw-size(15000)
+        flags(no-parse)
+        recursive(yes)
+        multi-line-mode(indented)
+    ); };    
+    destination d_syslog_tcp {
+        network(
+            "syslog-relay.default.svc.k8s.test.stratio.int"
+            transport("tcp")
+            port(7601)
+            template("${ISODATE}|${HOST}|${CONTAINER-IP}|${SERVICE}|${TASK}|${TASK-ID}|${FRAMEWORK-ID}|${SDATA}|$(indent-multi-line ${MESSAGE})\n")
+            template-escape(no)
+            disk-buffer(
+                mem-buf-size(200M)
+                disk-buf-size(500M)
+                reliable(yes)
+                dir("/var/syslog-ng")
+            )
+        );
+    }; 
+    
+    ###
+    # Rewrites
+    ###
+    
+    rewrite r_sdata {
+        set("userland" value(".SDATA.stratio@86473.source"));
+        set("$(basename ${FILE_NAME})" value(".SDATA.stratio@86473.file"));
+        set("mesos-agent-private" value(".SDATA.stratio@86473.role"));
+    };
+    
+    rewrite r_template {
+        set("${ISODATE}" value("stratio.h_timestamp"));
+        set("${HOST}" value("stratio.h_mesos_agent_ip"));
+        set("${CONTAINER-IP}" value("stratio.h_container_ip"));
+        set("${SERVICE}" value("stratio.h_service_name"));
+        set("${TASK}" value("stratio.h_task_name"));
+        set("${TASK-ID}" value("stratio.h_task_id"));
+        set("${FRAMEWORK-ID}" value("stratio.h_framework_id"));
+        set("${SDATA}" value("stratio.h_sdata"));
+    };
+    
+    rewrite r_rawmsg {
+        set("${MESSAGE}" value("stratio.raw_message"));
+    };
+    
+    rewrite r_journal {
+        set("service-fabric" value(".SDATA.stratio@86473.source"));
+    };
+    
+    rewrite escape {
+        subst("\n","\\n", value("MESSAGE"), flags("global"));
+    };
+    
+    ###
+    # Log-Routing
+    ###
+         
+    log {
+        source(s_dir); 
+        rewrite(escape);
+        rewrite(r_sdata);
+        destination(d_syslog_tcp);
+      flags(flow-control, final);
+    };

@@ -19,6 +19,8 @@ spec:
         command: ["/bin/sh","-c"]
         args: ['/bin/syslog_ng_exporter --telemetry.address=":9577" --log.format="logger:stderr?appname=syslog-agent" --socket.path="/var/lib/syslog-ng/syslog-ng.ctl" & /usr/sbin/syslog-ng -F']
         volumeMounts:
+        - mountPath: /var/syslog-ng/
+          name: syslog-ng-buffer
         - mountPath: /var/log
           name: varlog
         - mountPath: /etc/syslog-ng
@@ -38,6 +40,11 @@ spec:
           defaultMode: 420
           name: syslog-agent-config
         name: syslog-ng-config
+      - name: syslog-ng-buffer
+        hostPath:
+          # Ensure the file directory is created.
+          path: /opt/syslog-ng/
+          type: DirectoryOrCreate
       securityContext:
         fsGroup: 0
         runAsGroup: 0

@@ -65,6 +65,8 @@ ENV PYTHONPATH /etc/syslog-ng/python/
 #ADD run.sh /run.sh
 #ADD exporter.sh /exporter.sh
 
+ADD stratio-parser.conf /usr/share/syslog-ng/include/scl/stratio-parser.conf
+
 RUN chmod +x /bin/syslog_ng_exporter \
     && chmod +x /usr/sbin/syslog-ng
 

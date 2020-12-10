@@ -1,0 +1,57 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: syslog-relay-config
+  namespace: default
+data:
+  syslog-ng.conf: |
+    @version: 3.23
+    @include "/usr/share/syslog-ng/include/scl/elasticsearch/elastic-http.conf"
+    @include "/usr/share/syslog-ng/include/scl/elasticsearch/elastic-java.conf"
+    
+    ###
+    # Sources
+    ###
+    source s_network {
+      network(
+        port(7601)
+        transport("tcp")
+        flags(no-multi-line, no-parse)
+        max-connections(100)
+      );
+    };
+ 
+    ###
+    # Destinations
+    ###
+    
+    destination d_elastic {
+      elasticsearch-http(
+        url("https://elasticsearch.eos-logs.svc.k8s.test.stratio.int:9200/_bulk")
+        index("logstash_syslog")
+        type("")
+        batch-lines(500)
+        disk-buffer(
+            mem-buf-size(20M)
+            disk-buf-size(50M)
+            reliable(yes)
+            dir("/var/syslog-ng")
+        )
+        tls(
+            ca-file("/etc/certs/ca.crt")
+            cert-file("/etc/certs/tls.crt")
+            key-file("/etc/certs/tls.key")
+            peer-verify(yes)
+        )
+        template("$(format-json --scope rfc5424 --scope dot-nv-pairs
+        --rekey .* --shift 1 --scope nv-pairs
+        --exclude DATE --key ISODATE @timestamp=${ISODATE})")
+        persist-name("elastic_core")
+      );
+    };
+
+    log {
+        source(s_network);
+        destination(d_elastic);
+        flags(flow-control, final);
+    };

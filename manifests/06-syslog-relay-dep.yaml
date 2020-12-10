@@ -1,5 +1,5 @@
 apiVersion: apps/v1
-kind: Deployment
+kind: StatefulSet
 metadata:
   name: syslog-relay
 spec:
@@ -7,13 +7,12 @@ spec:
     matchLabels:
       app: syslog-relay
   replicas: 1
+  serviceName: syslog-relay
   template:
     metadata:
       labels:
         app: syslog-relay
     spec:
-      nodeSelector:
-        kubernetes.io/hostname: kube-node-1
       containers:
       - image: syslog-ng:test
         name: syslog-relay
@@ -29,12 +28,25 @@ spec:
           name: varlog
         - mountPath: /etc/syslog-ng
           name: syslog-ng-config
-        - mountPath: /var/result
-          name: logs-dest
+        - mountPath: /var/syslog-ng
+          name: buffer
         - name: varlibdockercontainers
           mountPath: /var/lib/docker/containers
           readOnly: true
+        - mountPath: /etc/certs
+          name: certs
       volumes:
+      - name: certs
+        secret:
+          defaultMode: 420
+          items:
+          - key: tls.crt
+            path: tls.crt
+          - key: tls.key
+            path: tls.key
+          - key: ca.crt
+            path: ca.crt
+          secretName: syslog-relay-cert-tls
       - hostPath:
           path: /var/lib/docker/containers
           type: ""
@@ -42,15 +54,13 @@ spec:
       - name: varlog
         hostPath:
           path: /var/log
-      - name: logs-dest
+      - name: buffer
         persistentVolumeClaim:
-          claimName: syslog-relay-log-dest
+          claimName: syslog-relay-buffer
       - configMap:
           defaultMode: 420
           name: syslog-relay-config
         name: syslog-ng-config
-      nodeSelector:
-        kubernetes.io/hostname: kube-node-1
       securityContext:
         fsGroup: 0
         runAsGroup: 0
