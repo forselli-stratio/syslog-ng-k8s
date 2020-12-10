@@ -23,8 +23,6 @@ spec:
           name: varlog
         - mountPath: /etc/syslog-ng
           name: syslog-ng-config
-        - mountPath: /var/result
-          name: logs-dest
         - name: varlibdockercontainers
           mountPath: /var/lib/docker/containers
           readOnly: true
@@ -36,9 +34,6 @@ spec:
       - name: varlog
         hostPath:
           path: /var/log
-      - name: logs-dest
-        persistentVolumeClaim:
-          claimName: syslog-agent-log-dest
       - configMap:
           defaultMode: 420
           name: syslog-agent-config

@@ -25,6 +25,12 @@ data:
             "syslog-relay.default.svc.k8s.test.stratio.int"
             transport("tcp")
             port(7601)
+            disk-buffer(
+                mem-buf-size(200M)
+                disk-buf-size(500M)
+                reliable(yes)
+                dir("/var/syslog-ng")
+            )
         );
     };
       

@@ -39,6 +39,28 @@ WORKDIR /syslog-ng
 
 COPY --from=exporter-build /go/src/github.com/brandond/syslog_ng_exporter/syslog_ng_exporter /bin/syslog_ng_exporter
 
+# Dependecies Installation
+RUN apt-get -y update \
+    && apt-get install -y --no-install-recommends \
+    python3 \
+    libjson-c3 \
+    libdbi1 \
+    libgeoip1 \
+    libnet1 \
+    libwrap0 \
+    python3-pip \
+    python3-setuptools \
+    curl \
+    openssl \
+    jq \
+    libcap2 \
+    vim
+
+RUN mkdir -p /etc/syslog-ng/python \
+    && pip3 install -Iv jsonpath-rw-ext==1.1.3
+
+ENV PYTHONPATH /etc/syslog-ng/python/
+
 #ADD entrypoint.sh /entrypoint.sh
 #ADD run.sh /run.sh
 #ADD exporter.sh /exporter.sh
