@@ -13,6 +13,6 @@ spec:
       app.kubernetes.io/instance: syslog-agent
   namespaceSelector:
     matchNames:
-    - eos-logs
+    - default
   endpoints:
   - port: metrics

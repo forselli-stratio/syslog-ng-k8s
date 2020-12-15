@@ -68,7 +68,7 @@ data:
             "syslog-relay.default.svc.k8s.test.stratio.int"
             transport("tcp")
             port(7601)
-            template("${ISODATE}|${HOST}|${CONTAINER-IP}|${SERVICE}|${TASK}|${TASK-ID}|${FRAMEWORK-ID}|${SDATA}|$(indent-multi-line ${MESSAGE})\n")
+            template("${ISODATE}|$(indent-multi-line ${MESSAGE})\n")
             template-escape(no)
             disk-buffer(
                 mem-buf-size(200M)
@@ -83,31 +83,6 @@ data:
     # Rewrites
     ###
     
-    rewrite r_sdata {
-        set("userland" value(".SDATA.stratio@86473.source"));
-        set("$(basename ${FILE_NAME})" value(".SDATA.stratio@86473.file"));
-        set("mesos-agent-private" value(".SDATA.stratio@86473.role"));
-    };
-    
-    rewrite r_template {
-        set("${ISODATE}" value("stratio.h_timestamp"));
-        set("${HOST}" value("stratio.h_mesos_agent_ip"));
-        set("${CONTAINER-IP}" value("stratio.h_container_ip"));
-        set("${SERVICE}" value("stratio.h_service_name"));
-        set("${TASK}" value("stratio.h_task_name"));
-        set("${TASK-ID}" value("stratio.h_task_id"));
-        set("${FRAMEWORK-ID}" value("stratio.h_framework_id"));
-        set("${SDATA}" value("stratio.h_sdata"));
-    };
-    
-    rewrite r_rawmsg {
-        set("${MESSAGE}" value("stratio.raw_message"));
-    };
-    
-    rewrite r_journal {
-        set("service-fabric" value(".SDATA.stratio@86473.source"));
-    };
-    
     rewrite escape {
         subst("\n","\\n", value("MESSAGE"), flags("global"));
     };
@@ -119,7 +94,6 @@ data:
     log {
         source(s_dir); 
         rewrite(escape);
-        rewrite(r_sdata);
         destination(d_syslog_tcp);
       flags(flow-control, final);
     };
